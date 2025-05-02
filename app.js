@@ -82,7 +82,7 @@ createGridTiles(player1UpgradeDeck, 7, 3);
 createGridTiles(player2UpgradeDeck, 7, 3);
 
 
-const API_BASE = "http://127.0.0.1:8000"; // Change to your Cloud Run URL later
+const API_BASE = "https://card-battler-server-386329199229.europe-central2.run.app/"; // Change to your Cloud Run URL later
 
 let currentSessionId = null;
 let currentPlayer = null;
