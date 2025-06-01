@@ -166,6 +166,163 @@
   }
 
 
+
+  /* Planet Selection Screen */
+  #planet-selection-screen {
+    padding: 20px;
+    text-align: center;
+  }
+
+  .instruction-text {
+    margin-bottom: 30px;
+    font-size: 1.1em;
+    color: #666;
+  }
+
+  .planets-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 20px;
+    margin: 30px 0;
+    max-width: 1000px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  .planet-card {
+    position: relative;
+    border: 3px solid transparent;
+    border-radius: 15px;
+    overflow: hidden;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    background: #f0f0f0;
+  }
+
+  .planet-card:hover {
+    transform: scale(1.05);
+    box-shadow: 0 8px 16px rgba(0,0,0,0.3);
+  }
+
+  .planet-card.selected {
+    border-color: #4CAF50;
+    box-shadow: 0 0 20px rgba(76, 175, 80, 0.5);
+  }
+
+  .planet-card.home-planet {
+    border-color: #FFD700;
+    box-shadow: 0 0 20px rgba(255, 215, 0, 0.7);
+  }
+
+  .planet-image {
+    width: 100%;
+    height: 150px;
+    object-fit: cover;
+  }
+
+  .planet-overlay {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: linear-gradient(transparent, rgba(0,0,0,0.8));
+    color: white;
+    padding: 15px;
+  }
+
+  .planet-name {
+    font-size: 1.2em;
+    font-weight: bold;
+    margin-bottom: 5px;
+  }
+
+  .planet-info {
+    font-size: 0.9em;
+    opacity: 0.9;
+  }
+
+  .planet-controls {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+  }
+
+  .home-planet-btn {
+    background: #FFD700;
+    border: none;
+    border-radius: 50%;
+    width: 35px;
+    height: 35px;
+    cursor: pointer;
+    font-size: 16px;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+  }
+
+  .planet-card.selected .home-planet-btn {
+    opacity: 1;
+  }
+
+  .planet-card.home-planet .home-planet-btn {
+    opacity: 1;
+    background: #FF6B35;
+  }
+
+  .planet-selection-controls {
+    margin: 30px 0;
+  }
+
+  .planet-selection-controls .main-button {
+    margin: 0 10px;
+  }
+
+  .selection-status {
+    display: flex;
+    justify-content: center;
+    gap: 30px;
+    font-size: 1.1em;
+    margin-top: 20px;
+  }
+
+  .selection-status div {
+    padding: 10px 20px;
+    background: #f5f5f5;
+    border-radius: 8px;
+  }
+
+  #selected-count {
+    font-weight: bold;
+    color: #4CAF50;
+  }
+
+  #home-planet-name {
+    font-weight: bold;
+    color: #FFD700;
+  }
+
+  .taken-indicator {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: rgba(255, 0, 0, 0.8);
+    color: white;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 10px;
+    font-weight: bold;
+  }
+
+  .home-planet-btn.disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    background-color: #666;
+  }
+
+  .home-planet-btn.disabled:hover {
+    background-color: #666;
+  }
+
+
   /* Main container with horizontal layout */
   #game-container {
     display: flex;
@@ -185,7 +342,7 @@
   }
 
   #left-panel, #right-panel {
-    width: 35%;
+    width: 33%;
     background-color: #e0e0e0;
     padding: 10px;
     border-radius: 8px;
@@ -194,7 +351,7 @@
   }
 
   #center-panel {
-    width: 30%;
+    width: 34%;
     display: flex;
     justify-content: center;
     align-items: center;
@@ -230,6 +387,67 @@
     background-color: #f5f5f5;
     padding: 5px;
     border-radius: 5px;
+  }
+
+  .planet-navigation {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 10px;
+    gap: 15px;
+  }
+  
+  .planet-arrow {
+    background: #4a5568;
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    font-size: 18px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  .planet-arrow:hover {
+    background: #2d3748;
+    transform: scale(1.1);
+  }
+  
+  .planet-arrow:disabled {
+    background: #718096;
+    cursor: not-allowed;
+    transform: none;
+  }
+  
+  .planet-info-display {
+    min-width: 200px;
+    text-align: center;
+  }
+  
+  .planet-name-display {
+    font-weight: bold;
+    font-size: 16px;
+    color: #2d3748;
+    padding: 8px 16px;
+    background: #e2e8f0;
+    border-radius: 20px;
+    border: 2px solid #cbd5e0;
+  }
+  
+  .planet-name-display.home-planet {
+    background: #c6f6d5;
+    border-color: #68d391;
+    color: #22543d;
+  }
+  
+  .planet-name-display.enemy-home {
+    background: #fed7d7;
+    border-color: #fc8181;
+    color: #742a2a;
   }
 
   .card {
@@ -287,12 +505,15 @@
     pointer-events: none;
   }
 
-  .grid {
+  #game-board {
     display: grid;
-    grid-template-columns: repeat(5, 1fr);
     gap: 3px;
-    width: 100%;
+    width: fit-content; /* Let the grid size itself based on content */
+    max-width: 100%; /* Don't exceed container width */
     height: auto;
+    overflow: auto;
+    margin: 0 auto; /* Center the board */
+    justify-content: center; /* Center the grid items */
   }
 
   .tile {
@@ -300,12 +521,125 @@
     border: 2px solid #aaa;
     position: relative;
     cursor: pointer;
-    width: 100%;
+    width: 80px; /* Fixed width for consistency */
+    height: 100px; /* Fixed height maintaining 3:4 ratio */
     aspect-ratio: 3 / 4;
     overflow: hidden;
     box-sizing: border-box;
-    padding: 3px; 
+    padding: 3px;
   }
+  
+  /* For very large planets, make tiles smaller to fit */
+  @media (min-width: 1600px) {
+    .tile {
+      width: 110px;
+      height: 140px;
+    }
+  }
+
+  @media (max-width: 1400px) {
+    .tile {
+      width: 90px;
+      height: 110px;
+    }
+  }
+  
+  @media (max-width: 1200px) {
+    .tile {
+      width: 85px;
+      height: 105px;
+    }
+  }
+  
+  @media (max-width: 800px) {
+    .tile {
+      width: 70px;
+      height: 87px;
+    }
+  }
+  
+/* Feature Icons Styling */
+.feature-icons-large {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
+  gap: 2px;
+  padding: 4px;
+  pointer-events: none;
+  z-index: 5;
+}
+
+.feature-icons-small {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  right: 2px;
+  height: 25%;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: flex-start;
+  gap: 1px;
+  pointer-events: none;
+  z-index: 15;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 3px;
+  backdrop-filter: blur(2px);
+}
+
+.feature-icons-large .feature-icon {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(1px);
+}
+
+.feature-icons-small .feature-icon {
+  width: 16px;
+  height: 16px;
+  object-fit: contain;
+  border-radius: 2px;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.5));
+}
+
+/* Ensure cards don't interfere with feature icon positioning */
+.card-on-board {
+  position: relative;
+  z-index: 10;
+}
+
+/* Add a subtle border to tiles with features */
+.tile:has(.feature-icons-large), 
+.tile:has(.feature-icons-small) {
+  border-color: #8b9dc3;
+  box-shadow: inset 0 0 3px rgba(139, 157, 195, 0.3);
+}
+
+/* Responsive adjustments for feature icons */
+@media (max-width: 1200px) {
+  .feature-icons-small .feature-icon {
+    width: 14px;
+    height: 14px;
+  }
+}
+
+@media (max-width: 800px) {
+  .feature-icons-small .feature-icon {
+    width: 12px;
+    height: 12px;
+  }
+  
+  .feature-icons-large {
+    padding: 2px;
+  }
+}
 
   .card.selected {
     outline: 3px solid #ff9800;

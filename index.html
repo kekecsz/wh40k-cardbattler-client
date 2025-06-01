@@ -33,6 +33,26 @@
     </div>
   </div>
 
+  <!-- Planet Selection Screen (initially hidden) -->
+  <div id="planet-selection-screen" class="hidden">
+    <h1>Choose Your Battlegrounds</h1>
+    <p class="instruction-text">Select at least 2 planets to battle on, and choose your home planet</p>
+    
+    <div id="planets-container" class="planets-grid">
+      <!-- Planets will be populated dynamically -->
+    </div>
+    
+    <div class="planet-selection-controls">
+      <button id="startSessionBtn" class="main-button disabled">Start Session</button>
+      <button id="backToMainBtn" class="main-button">Back</button>
+    </div>
+    
+    <div class="selection-status">
+      <div>Selected Planets: <span id="selected-count">0</span></div>
+      <div>Home Planet: <span id="home-planet-name">None</span></div>
+    </div>
+  </div>
+
   <!-- Main Game Screen (initially hidden) -->
   <div id="game-screen" class="hidden">
     <h1>Card Battler Multiplayer</h1>
@@ -56,7 +76,14 @@
       
       <!-- Center Panel - Game Board -->
       <div id="center-panel" class="game-panel">
-        <div id="game-board" class="grid"></div>
+        <div class="planet-navigation">
+          <button id="planet-left-arrow" class="planet-arrow" title="Previous Planet">←</button>
+          <div class="planet-info-display">
+            <div id="current-planet-name" class="planet-name-display">Loading...</div>
+          </div>
+          <button id="planet-right-arrow" class="planet-arrow" title="Next Planet">→</button>
+        </div>
+        <div id="game-board" class="game-board"></div>
       </div>
       
       <!-- Right Panel - Player 2 -->
