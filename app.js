@@ -46,7 +46,7 @@ const player1Graveyard = document.getElementById("player1-graveyard");
 const player2Graveyard = document.getElementById("player2-graveyard");
 const statusDisplay = document.getElementById("status-display");
 const advanceButton = document.getElementById("advance-button");
-const API_BASE = "http://127.0.0.1:8000"; // Change to your Cloud Run URL later
+const API_BASE = "https://card-battler-server-386329199229.europe-central2.run.app"; // Change to your Cloud Run URL later
 
 document.getElementById("startGame").addEventListener("click", async () => {
   isJoiningPlayer = false;
