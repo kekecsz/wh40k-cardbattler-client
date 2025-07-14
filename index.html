@@ -8,35 +8,106 @@
   </head>
 
 <body>
-  <!-- Game Start Screen -->
-  <div id="start-screen">
-    <h1>Card Battler</h1>
+<!-- Game Start Screen -->
+<div id="start-screen">
+  <h1>Card Battler</h1>
+  
+  <!-- Main Menu (initially visible) -->
+  <div id="main-menu" class="menu-section">
     <div class="start-buttons">
       <button id="startGame" class="main-button">Start New Game</button>
       <button id="joinGameBtn" class="main-button">Join Game</button>
       <button id="settingsBtn" class="main-button">Settings</button>
     </div>
-    
-    <!-- Join Game Dialog (initially hidden) -->
-    <div id="join-dialog" class="dialog hidden">
-      <h2>Join Existing Game</h2>
-      <input id="sessionInput" placeholder="Enter session ID">
-      <div class="dialog-buttons">
-        <button id="joinGame" class="dialog-button">Join</button>
-        <button id="cancelJoin" class="dialog-button">Cancel</button>
-      </div>
-    </div>
-
-    <!-- Console Messages on Start Screen -->
-    <div id="start-console-container">
-      <div id="startConsoleLog" class="console-log"></div>
+  </div>
+  
+  <!-- Game Type Selection (initially hidden) -->
+  <div id="game-type-menu" class="menu-section hidden">
+    <h2>Select Game Type</h2>
+    <div class="start-buttons">
+      <button id="singleplayerBtn" class="main-button disabled">Singleplayer</button>
+      <button id="multiplayerBtn" class="main-button">Multiplayer</button>
+      <button id="backToMainMenuBtn" class="main-button secondary">Back</button>
     </div>
   </div>
+  
+  <!-- Multiplayer Options (initially hidden) -->
+  <div id="multiplayer-menu" class="menu-section hidden">
+    <h2>Multiplayer Options</h2>
+    <div class="start-buttons">
+      <button id="quickMatchBtn" class="main-button">Quick Match</button>
+      <button id="customMatchBtn" class="main-button">Custom Match</button>
+      <button id="backToGameTypeBtn" class="main-button secondary">Back</button>
+    </div>
+  </div>
+  
+  <!-- Faction Selection (initially hidden) -->
+  <div id="faction-selection-menu" class="menu-section hidden">
+    <h2>Choose Your Faction</h2>
+    <div id="factions-container" class="factions-grid">
+      <!-- Factions will be populated dynamically -->
+    </div>
+    <div class="faction-controls">
+      <button id="backToMultiplayerBtn" class="main-button secondary">Back</button>
+    </div>
+  </div>
+  
+  <!-- Faction Details (initially hidden) -->
+  <div id="faction-details-menu" class="menu-section hidden">
+    <div class="faction-details-container">
+      <div class="faction-info-panel">
+        <h2 id="selected-faction-name">Faction Name</h2>
+        <div class="faction-home-planet">
+          <h3>Home Planet</h3>
+          <div id="faction-home-planet-display">
+            <img id="faction-planet-image" src="" alt="Home Planet">
+            <span id="faction-planet-name">Planet Name</span>
+          </div>
+        </div>
+        
+        <div class="faction-commanders">
+          <h3>Available Commanders</h3>
+          <div id="commanders-container" class="commanders-grid">
+            <!-- Commanders will be populated dynamically -->
+          </div>
+        </div>
+        
+        <div class="faction-decks">
+          <h3>Available Decks</h3>
+          <div id="decks-container" class="decks-grid">
+            <!-- Decks will be populated dynamically -->
+          </div>
+        </div>
+        
+        <div class="faction-detail-controls">
+          <button id="proceedToPlanetSelection" class="main-button" disabled>Continue</button>
+          <button id="backToFactionSelection" class="main-button secondary">Back</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Join Game Dialog (initially hidden) -->
+  <div id="join-dialog" class="dialog hidden">
+    <h2>Join Existing Game</h2>
+    <input id="sessionInput" placeholder="Enter session ID (optional for Quick Join)">
+    <div class="dialog-buttons">
+      <button id="joinGame" class="dialog-button">Join</button>
+      <button id="quickJoinGame" class="dialog-button quick-join">⚡ Quick Join</button>
+      <button id="cancelJoin" class="dialog-button">Cancel</button>
+    </div>
+  </div>
+
+  <!-- Console Messages on Start Screen -->
+  <div id="start-console-container">
+    <div id="startConsoleLog" class="console-log"></div>
+  </div>
+</div>
 
   <!-- Planet Selection Screen (initially hidden) -->
   <div id="planet-selection-screen" class="hidden">
     <h1>Choose Your Battlegrounds</h1>
-    <p class="instruction-text">Select at least 2 planets to battle on, and choose your home planet</p>
+    <p class="instruction-text">Select at least 2 planets to battle on. Your home planet is already selected.</p>
     
     <div id="planets-container" class="planets-grid">
       <!-- Planets will be populated dynamically -->
@@ -55,27 +126,61 @@
 
   <!-- Main Game Screen (initially hidden) -->
   <div id="game-screen" class="hidden">
-    <h1>Card Battler Multiplayer</h1>
-
-    <div id="game-container">
-      <!-- Left Panel - Player 1 -->
-      <div id="left-panel" class="game-panel">
-        <div class="panel-title">Player 1</div>
-        <div id="player1-hand" class="hand"></div>
+    <!-- Top 80% - Four Panel Layout -->
+    <div class="top-panel-container">
+      <!-- Panel 1: Player Status & Upgrade Deck (20%) -->
+      <div class="panel panel-1">
+        <div class="panel-title">Your Forces</div>
         
-        <div class="player-controls">
-          <button id="draw-player1">Draw for Player 1</button>
+        <!-- Player Resources -->
+        <div class="player-resources">
+          <div class="resource-item">
+            <div class="resource-icon health">
+              <div class="resource-number" id="player-health">20</div>
+            </div>
+          </div>
+          <div class="resource-item">
+            <div class="resource-icon armor">
+              <div class="resource-number" id="player-armor">0</div>
+            </div>
+          </div>
+          <div class="resource-item">
+            <div class="resource-icon biomass">
+              <div class="resource-number" id="player-biomass">1</div>
+            </div>
+          </div>
+          <div class="resource-item">
+            <div class="resource-icon plasteel">
+              <div class="resource-number" id="player-plasteel">1</div>
+            </div>
+          </div>
+          <div class="resource-item">
+            <div class="resource-icon promethium">
+              <div class="resource-number" id="player-promethium">0</div>
+            </div>
+          </div>
         </div>
-        
-        <div class="panel-title">Upgrade Deck - Player 1</div>
-        <div id="player1-upgrade-deck" class="upgrade-deck"></div>
-        
-        <div class="panel-title">Graveyard - Player 1</div>
-        <div id="player1-graveyard" class="graveyard"></div>
+
+        <!-- Upgrade Deck Display -->
+        <div class="upgrade-deck-display" id="player1-upgrade-deck">
+          <div class="upgrade-slot">Upgrade</div>
+          <div class="upgrade-slot">Upgrade</div>
+          <div class="upgrade-slot">Upgrade</div>
+          <div class="upgrade-slot">Upgrade</div>
+          <div class="upgrade-slot">Upgrade</div>
+          <div class="upgrade-slot">Upgrade</div>
+          <div class="upgrade-slot">Upgrade</div>
+          <div class="upgrade-slot">Upgrade</div>
+          <div class="upgrade-slot">Upgrade</div>
+          <div class="upgrade-slot">Upgrade</div>
+          <div class="upgrade-slot">Upgrade</div>
+          <div class="upgrade-slot">Upgrade</div>
+        </div>
+
       </div>
-      
-      <!-- Center Panel - Game Board -->
-      <div id="center-panel" class="game-panel">
+
+      <!-- Panel 2: Main Game Board (40%) -->
+      <div class="panel panel-2">
         <div class="planet-navigation">
           <button id="planet-left-arrow" class="planet-arrow" title="Previous Planet">←</button>
           <div class="planet-info-display">
@@ -83,68 +188,163 @@
           </div>
           <button id="planet-right-arrow" class="planet-arrow" title="Next Planet">→</button>
         </div>
-        <div id="game-board" class="game-board"></div>
-      </div>
-      
-      <!-- Right Panel - Player 2 -->
-      <div id="right-panel" class="game-panel">
-        <div class="panel-title">Player 2</div>
-        <div id="player2-hand" class="hand"></div>
         
-        <div class="player-controls">
-          <button id="draw-player2">Draw for Player 2</button>
+        <div id="game-board" class="game-board">
+          <!-- Game tiles will be generated here -->
         </div>
-        
-        <div class="panel-title">Upgrade Deck - Player 2</div>
-        <div id="player2-upgrade-deck" class="upgrade-deck"></div>
-        
-        <div class="panel-title">Graveyard - Player 2</div>
-        <div id="player2-graveyard" class="graveyard"></div>
       </div>
 
-      <div id="game-status" class="status-sidebar">
-        <div id="round-indicator" class="status-box neutral">Round: 1</div>
-        <div id="turn-indicator" class="status-box blue">Player 1's Turn</div>
-        <div id="stage-indicator" class="status-box stage-waitingroom">Stage: waitingroom</div>
-        <button id="advance-button" class="status-box advance-btn">Next Stage ⏭️</button>
+      <!-- Panel 3: Planet Previews (20%) -->
+      <div class="panel panel-3">
+        <div class="panel-title">Planet Overview</div>
+        
+        <div class="planet-previews-container" id="planet-previews-container">
+          <!-- Planet previews will be generated dynamically -->
+        </div>
+      </div>
+
+      <!-- Panel 4: Enemy Info (15%) -->
+      <div class="panel panel-4">
+        <div class="panel-title">Enemy Forces</div>
+        
+        <div class="enemy-info-container">
+          <div class="enemy-decks-rows">
+            <div class="enemy-deck-item" id="enemy-hand">
+              <div class="enemy-deck-label">Hand</div>
+              <div class="enemy-deck-count">5</div>
+            </div>
+            
+            <div class="enemy-deck-item" id="enemy-upgrade-deck">
+              <div class="enemy-deck-label">Upgrade Deck</div>
+              <div class="enemy-deck-count">•••</div>
+            </div>
+          </div>
+
+          <div class="enemy-decks-rows">
+            <div class="enemy-deck-item" id="enemy-draw-deck">
+              <div class="enemy-deck-label">Draw Deck</div>
+              <div class="enemy-deck-count">25</div>
+            </div>
+            
+            <div class="enemy-deck-item" id="enemy-discard-pile">
+              <div class="enemy-deck-label">Discard Pile</div>
+              <div class="enemy-deck-count">0</div>
+            </div>
+          </div>
+          <div class="enemy-decks-rows">
+            <div class="enemy-deck-item" id="enemy-graveyard">
+              <div class="enemy-deck-label">Graveyard</div>
+              <div class="enemy-deck-count">2</div>
+            </div>
+            
+            <div class="enemy-deck-item" id="enemy-trash-pile">
+              <div class="enemy-deck-label">Trash Pile</div>
+              <div class="enemy-deck-count">0</div>
+            </div>
+          </div>
+          <!-- Enemy Resources -->
+          <div style="background-color: #45475a; border-radius: 6px; padding: 8px; margin-top: 8px;">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+              <div class="resource-item">
+                <div class="resource-icon health">
+                  <div class="resource-number" id="enemy-health">20</div>
+                </div>
+              </div>
+              <div class="resource-item">
+                <div class="resource-icon armor">
+                  <div class="resource-number" id="enemy-armor">0</div>
+                </div>
+              </div>
+              <div class="resource-item">
+                <div class="resource-icon biomass">
+                  <div class="resource-number" id="enemy-biomass">1</div>
+                </div>
+              </div>
+              <div class="resource-item">
+                <div class="resource-icon plasteel">
+                  <div class="resource-number" id="enemy-plasteel">1</div>
+                </div>
+              </div>
+              <div class="resource-item">
+                <div class="resource-icon promethium">
+                  <div class="resource-number" id="enemy-promethium">0</div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div style="margin-top: 12px;"> <!-- Console Log -->
+            <div class="panel-title" style="font-size: 0.9em; margin-bottom: 6px;">Command Log</div>
+            <div id="consoleLog" class="console-log" style="height: 100px;"></div>
+          </div>
+        </div>
       </div>
     </div>
 
-    <div id="player-status-panel">
-      <div class="player-status" id="player1-status">
-        <div class="player-label">Player 1</div>
-        <div class="stat">
-          <span class="icon blue">❤️</span>
-          <span id="player1-health">20</span>
+    <!-- Bottom 20% - Player Cards and Controls -->
+    <div class="bottom-panel-container">
+      <!-- Player's Cards Section -->
+      <div class="player-cards-section">
+        <div class="deck-area" id="player-draw-deck">
+          <div class="deck-label">Draw Deck</div>
+          <div class="deck-count">25</div>
         </div>
-        <div class="stat">
-          <span class="icon blue">🛡️</span>
-          <span id="player1-armor">0</span>
+
+        <div class="hand-area" id="player1-hand">
+          <div class="hand-slot">Card</div>
+          <div class="hand-slot">Card</div>
+          <div class="hand-slot">Card</div>
+          <div class="hand-slot">Card</div>
+          <div class="hand-slot">Card</div>
+          <div class="hand-slot">Empty</div>
+          <div class="hand-slot">Empty</div>
+        </div>
+
+        <div class="deck-area" id="player-discard-pile">
+          <div class="deck-label">Discard Pile</div>
+          <div class="deck-count">0</div>
+        </div>
+
+        <div class="deck-area" id="player1-graveyard">
+          <div class="deck-label">Graveyard</div>
+          <div class="deck-count">1</div>
+        </div>
+
+        <div class="deck-area" id="player-trash-pile">
+          <div class="deck-label">Trash Pile</div>
+          <div class="deck-count">0</div>
         </div>
       </div>
-    
-      <div class="player-status" id="player2-status">
-        <div class="player-label">Player 2</div>
-        <div class="stat">
-          <span class="icon red">❤️</span>
-          <span id="player2-health">20</span>
-        </div>
-        <div class="stat">
-          <span class="icon red">🛡️</span>
-          <span id="player2-armor">0</span>
+
+      <!-- Control Section -->
+      <div class="control-section">
+        <button id="advance-button" class="advance-btn">Next Stage</button>
+        <div class="status-indicators">
+          <div id="round-indicator" class="status-box neutral">Round: 1</div>
+          <div id="turn-indicator" class="status-box blue">Player 1's Turn</div>
+          <div id="stage-indicator" class="status-box stage-waitingroom">Stage: waitingroom</div>
         </div>
       </div>
     </div>
 
-    <div id="attack-menu" style="display: none; position: absolute; z-index: 1000;">
+    <!-- Attack Menu -->
+    <div id="attack-menu">
       <button class="attack-btn" data-type="melee">⚔️</button>
       <button class="attack-btn" data-type="ranged">🏹</button>
       <button class="attack-btn" data-type="blast">💥</button>
     </div>
 
-    <p id="playerInfo"></p>
-    <div id="consoleLog" class="console-log"></div>
+    <!-- Effect Selection Menu -->
+    <div id="effect-menu" class="effect-menu">
+      <div class="effect-menu-header">Select Effect</div>
+      <div id="effect-menu-items">
+        <!-- Effect items will be populated dynamically -->
+      </div>
+    </div>
+
   </div>
+
+  <!-- Game Over Overlay -->
+  <div id="game-over-overlay"></div>
 
   <script src="app.js"></script>
   
