@@ -1754,16 +1754,29 @@
     right: 1px;
     display: flex;
     gap: 1px;
+    font-size: 1em;
     z-index: 5;
   }
 
   .game-upgrade-cost-item {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     width: 22px;
     height: 22px;
   }
 
   .game-upgrade-cost-item .upgrade-cost-number {
-    font-size: 0.9em;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: white;
+    font-weight: bold;
+    font-size: 0.8em;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.9);
+    z-index: 10;
   }
 
   /* No upgrades message */
@@ -3353,6 +3366,16 @@
   .control-section .advance-btn.disabled {
     background-color: #95a5a6;
     cursor: not-allowed;
+  }
+
+  .advance-button[data-ready="true"] {
+    background-color: #a6e3a1;
+    color: #1e1e2e;
+  }
+  
+  .advance-button[data-ready="waiting"] {
+    background-color: #f9e2af;
+    color: #1e1e2e;
   }
 
   /* Hide old game container when using new layout */

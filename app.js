@@ -69,7 +69,7 @@ const player1Graveyard = document.getElementById("player1-graveyard");
 const player2Graveyard = document.getElementById("player2-graveyard"); // Keep for compatibility
 const statusDisplay = document.getElementById("status-display");
 const advanceButton = document.getElementById("advance-button");
-const API_BASE = "https://card-battler-server-386329199229.europe-central2.run.app"; // Change to your Cloud Run URL later
+const API_BASE = "http://127.0.0.1:8000"; // Change to your Cloud Run URL later
 
 document.getElementById("startGame").addEventListener("click", () => {
   isJoiningPlayer = false; // Reset this flag
@@ -5275,14 +5275,27 @@ function setupPolling() {
   // Check if we're in the waiting room stage
   const isWaitingRoom = latestGameState && latestGameState.stage === "waitingroom";
   
+  // Check if we're in prebattle stage
+  const isPrebattle = latestGameState && latestGameState.stage === "prebattle";
+  
+  // Check if we're the active player
+  const isActivePlayer = latestGameState && latestGameState.playerturn === currentPlayer;
+
   // Set up polling if:
   // 1. We're in the waiting room stage (regardless of active player), OR
-  // 2. We're not the active player (existing behavior)
-  if (isWaitingRoom || !latestGameState || latestGameState.playerturn !== currentPlayer) {
+  // 2. We're not the active player (existing behavior), OR
+  // 3. We're in prebattle stage and are the active player (NEW: need to poll for other player's readiness)
+  if (isWaitingRoom || !isActivePlayer || (isPrebattle && isActivePlayer)) {
     pollingInterval = setInterval(pollGameState, 3000);
-    console.log(`Setting up polling: ${isWaitingRoom ? "waiting room" : "inactive player"}`);
+    
+    let reason = "unknown";
+    if (isWaitingRoom) reason = "waiting room";
+    else if (!isActivePlayer) reason = "inactive player";
+    else if (isPrebattle && isActivePlayer) reason = "active player waiting for prebattle ready";
+    
+    console.log(`Setting up polling: ${reason}`);
   } else {
-    console.log("No polling for active player in gameplay stage");
+    console.log("No polling for active player in normal gameplay stage");
   }
 }
 
@@ -5552,7 +5565,10 @@ function didStatusChange(oldState, newState) {
                             oldState.winner !== newState.winner || 
                             oldState.stage !== newState.stage;
 
-  
+  // NEW: Check for prebattle_ready changes
+  const prebattleReadyChanged = JSON.stringify(oldState.prebattle_ready || {}) !== 
+                               JSON.stringify(newState.prebattle_ready || {});
+
   // If we're in waiting room, only check basic state changes
   if (newState.stage === "waitingroom") {
     return basicStateChanged;
@@ -5588,7 +5604,8 @@ function didStatusChange(oldState, newState) {
                       oldOtherPlayer.promethium !== newOtherPlayer.promethium;
   }
   
-  return basicStateChanged || resourcesChanged;
+  // Return true if ANY relevant change occurred
+  return basicStateChanged || resourcesChanged || prebattleReadyChanged;
 }
 
 // Function to check if graveyards have changed
@@ -6331,14 +6348,8 @@ function updateGameStatus(gamestate) {
     stageBox.className = `status-box stage-${stage}`;
   }
 
-  // Enable or disable the advance button
-  if (advanceButton) {
-    if (turnPlayer === currentPlayer && stage !== "waitingroom") {
-      advanceButton.classList.remove("disabled");
-    } else {
-      advanceButton.classList.add("disabled");
-    }
-  }
+  // Handle advance button with prebattle logic
+  updateAdvanceButtonForPrebattle(gamestate);
 
   // Update player health and armor in the new layout
   const p1 = gamestate.players.player1;
@@ -6507,30 +6518,117 @@ function updateEnemyResources(enemyPlayer) {
   if (enemyPromethiumEl) enemyPromethiumEl.textContent = enemyPlayer.promethium ?? 0;
 }
 
-advanceButton.addEventListener("click", async () => {
+
+advanceButton.addEventListener("click", handleAdvanceButtonClick);
+
+// Function to check if we're in prebattle stage and handle button state
+function updateAdvanceButtonForPrebattle(gameState) {
+  if (!gameState || !advanceButton) return;
+  
+  const isActivePlayer = gameState.playerturn === currentPlayer;
+  const isPrebattle = gameState.stage === "prebattle";
+  
+  if (isPrebattle) {
+    const currentPlayerReady = gameState.prebattle_ready?.[currentPlayer] || false;
+    const otherPlayer = currentPlayer === "player1" ? "player2" : "player1";
+    const otherPlayerReady = gameState.prebattle_ready?.[otherPlayer] || false;
+    
+    if (isActivePlayer) {
+      // Active player logic: can only advance if other player is ready
+      if (otherPlayerReady) {
+        advanceButton.classList.remove("disabled");
+        advanceButton.textContent = "Next";
+        advanceButton.title = "Advance to battle phase";
+      } else {
+        advanceButton.classList.add("disabled");
+        advanceButton.textContent = "Next";
+        advanceButton.title = "Waiting for other player to be ready";
+      }
+    } else {
+      // Inactive player logic: can indicate readiness
+      if (currentPlayerReady) {
+        advanceButton.classList.add("disabled");
+        advanceButton.textContent = "Ready ✓";
+        advanceButton.title = "You are ready for battle";
+      } else {
+        advanceButton.classList.remove("disabled");
+        advanceButton.textContent = "Ready";
+        advanceButton.title = "Indicate you are ready for battle";
+      }
+    }
+  } else {
+    // Normal stage logic (existing behavior)
+    if (isActivePlayer && gameState.stage !== "waitingroom") {
+      advanceButton.classList.remove("disabled");
+      advanceButton.textContent = "Next";
+      advanceButton.title = "Advance to next stage";
+    } else {
+      advanceButton.classList.add("disabled");
+      advanceButton.textContent = "Next";
+      advanceButton.title = gameState.stage === "waitingroom" ? "Waiting for game to start" : "Wait for your turn";
+    }
+  }
+}
+
+// Function to handle advance button click with prebattle logic
+async function handleAdvanceButtonClick() {
   if (!currentSessionId || !currentPlayer || advanceButton.classList.contains("disabled")) return;
 
-  const res = await fetch(`${API_BASE}/advance`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ sessionid: currentSessionId })
-  });
+  const isPrebattle = latestGameState.stage === "prebattle";
+  const isActivePlayer = latestGameState.playerturn === currentPlayer;
 
-  const data = await res.json();
-  if (data.error) {
-    console.error("Advance failed:", data.error);
-    return;
+  if (isPrebattle && !isActivePlayer) {
+    // Inactive player clicking "Ready" button
+    try {
+      const res = await fetch(`${API_BASE}/prebattle_ready`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sessionid: currentSessionId,
+          player: currentPlayer
+        })
+      });
+
+      const data = await res.json();
+      if (data.error) {
+        console.error("Ready failed:", data.error);
+        return;
+      }
+
+      // Update game state after marking ready
+      updateGameStateAndRender(data);
+
+    } catch (error) {
+      console.error("Network error setting ready:", error);
+    }
+  } else {
+    // Normal advance logic (existing behavior)
+    try {
+      const res = await fetch(`${API_BASE}/advance`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sessionid: currentSessionId })
+      });
+
+      const data = await res.json();
+      if (data.error) {
+        console.error("Advance failed:", data.error);
+        return;
+      }
+
+      // Update game state after action
+      updateGameStateAndRender(data);
+
+      // If we're advancing to prebattle, immediately poll again to ensure attack targets are populated
+      if (data.stage === "prebattle") {
+        console.log("Advanced to prebattle stage, fetching fresh data with attack targets...");
+        setTimeout(pollGameState, 500);
+      }
+    } catch (error) {
+      console.error("Network error advancing stage:", error);
+    }
   }
-
-  // Update game state after action
-  updateGameStateAndRender(data);
-
-  // If we're advancing to prebattle, immediately poll again to ensure attack targets are populated
-  if (data.stage === "prebattle") {
-    console.log("Advanced to prebattle stage, fetching fresh data with attack targets...");
-    setTimeout(pollGameState, 500); // Poll after a brief delay to ensure server has calculated targets
-  }
-});
+}
 
 // This function can be simplified since we're managing movement tiles differently
 function clearTileListenersAndClasses() {
