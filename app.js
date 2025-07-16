@@ -37,6 +37,8 @@ let planetTransferMode = false;
 let selectedEntitiesForTransfer = [];
 let sourcePlanetForTransfer = null;
 let currentEffectMenuEntity = null;
+let cardEnlargementModal = null;
+let enlargedCardData = null;
 
 
 // DOM elements for start screen
@@ -69,7 +71,7 @@ const player1Graveyard = document.getElementById("player1-graveyard");
 const player2Graveyard = document.getElementById("player2-graveyard"); // Keep for compatibility
 const statusDisplay = document.getElementById("status-display");
 const advanceButton = document.getElementById("advance-button");
-const API_BASE = "https://card-battler-server-386329199229.europe-central2.run.app"; // Change to your Cloud Run URL later
+const API_BASE = "http://127.0.0.1:8000"; // Change to your Cloud Run URL later
 
 document.getElementById("startGame").addEventListener("click", () => {
   isJoiningPlayer = false; // Reset this flag
@@ -1753,6 +1755,8 @@ function switchToGameScreen() {
     createPlanetPreviews();
     updatePlanetPreviewTiles();
   }
+
+  reinitializeCardEnlargement();
 }
 
 
@@ -1948,6 +1952,8 @@ function renderBoardForPlanet(players, planetName) {
         cardElement.appendChild(img);
         cardElement.appendChild(info);
 
+        addCardEnlargementListener(cardElement);
+
         // Add token icons if entity has tokens
         const tokenIcons = createTokenIcons(card);
         if (tokenIcons) {
@@ -2083,6 +2089,10 @@ function renderBoardForPlanet(players, planetName) {
       attachPlacementListener(tile);
     });
   }
+
+  setTimeout(() => {
+    setupGlobalCardEnlargementListeners();
+  }, 100);
 }
 
 
@@ -2499,6 +2509,10 @@ function renderUpgradeDeck(upgradeDeckEntities, playerName) {
     const categoryContainer = createGameUpgradeCategoryContainer(category, categoryData);
     upgradeContainer.appendChild(categoryContainer);
   });
+
+  setTimeout(() => {
+    setupGlobalCardEnlargementListeners();
+  }, 100);
 }
 
 // Function to organize upgrade cards by category and level for game display - fully dynamic
@@ -5446,6 +5460,10 @@ function updateGameStateAndRender(newState) {
     updatePlanetDisplay();
     updatePlanetPreviewTiles();
   }
+
+  setTimeout(() => {
+    setupGlobalCardEnlargementListeners();
+  }, 100);
 }
 
 // Helper functions to determine what's changed in the game state
@@ -6324,6 +6342,10 @@ function renderHand(hand, player) {
       slot.style.fontSize = "0.8em";
     }
   });
+
+  setTimeout(() => {
+    setupGlobalCardEnlargementListeners();
+  }, 100);
 }
 
 function updateGameStatus(gamestate) {
@@ -7187,7 +7209,7 @@ function createTokenIcons(entity) {
     });
   }
 
-  // NEW: Add deep_strike keyword icon during cardplacement stage
+  // deep_strike keyword icon during cardplacement stage
   if (latestGameState && latestGameState.stage === "cardplacement" && 
       entity.container === "hand" && 
       entity.keywords && entity.keywords.includes('deep_strike')) {
@@ -7213,3 +7235,552 @@ function createTokenIcons(entity) {
   return hasIcons ? tokenContainer : null;
 }
 
+
+
+
+
+
+
+// Initialize card enlargement system
+function initializeCardEnlargement() {
+  createCardEnlargementModal();
+  setupGlobalCardEnlargementListeners();
+}
+
+// Create the modal overlay for enlarged cards
+function createCardEnlargementModal() {
+  if (cardEnlargementModal) return; // Already created
+  
+  cardEnlargementModal = document.createElement('div');
+  cardEnlargementModal.id = 'card-enlargement-modal';
+  cardEnlargementModal.className = 'card-enlargement-modal hidden';
+  
+  cardEnlargementModal.innerHTML = `
+    <div class="card-enlargement-overlay">
+      <div class="card-enlargement-container">
+        <button class="card-enlargement-close" title="Close (ESC)">&times;</button>
+        <div class="card-enlargement-content">
+          <div class="enlarged-card-image-container">
+            <img class="enlarged-card-image" src="" alt="Card Image">
+            <div class="enlarged-card-overlay-info">
+              <!-- Overlay information will be added here -->
+            </div>
+          </div>
+          <div class="enlarged-card-details">
+            <div class="enlarged-card-header">
+              <h2 class="enlarged-card-name"></h2>
+              <div class="enlarged-card-location"></div>
+            </div>
+            <div class="enlarged-card-stats"></div>
+            <div class="enlarged-card-keywords"></div>
+            <div class="enlarged-card-effects"></div>
+            <div class="enlarged-card-cost"></div>
+            <div class="enlarged-card-tokens"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+  
+  document.body.appendChild(cardEnlargementModal);
+  
+  // Add event listeners for closing
+  const closeBtn = cardEnlargementModal.querySelector('.card-enlargement-close');
+  const overlay = cardEnlargementModal.querySelector('.card-enlargement-overlay');
+  
+  closeBtn.addEventListener('click', closeCardEnlargement);
+  overlay.addEventListener('click', (e) => {
+    if (e.target === overlay) {
+      closeCardEnlargement();
+    }
+  });
+  
+  // ESC key to close
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && !cardEnlargementModal.classList.contains('hidden')) {
+      closeCardEnlargement();
+    }
+  });
+}
+
+// Setup global listeners for ctrl+click on cards
+function setupGlobalCardEnlargementListeners() {
+  // Remove any existing listener to avoid duplicates
+  document.removeEventListener('click', handleCardEnlargementClick);
+  document.addEventListener('click', handleCardEnlargementClick, true); // Use capture phase
+  
+  console.log('Card enlargement listeners set up');
+}
+
+// Handle ctrl+click on cards throughout the application
+function handleCardEnlargementClick(e) {
+  console.log('Click detected:', e.ctrlKey, e.metaKey, e.target.className, e.target.closest('.card, .hand-slot, .game-upgrade-card, .upgrade-card-item, .deck-card-stack, .card-on-board'));
+  
+  // Only proceed if Ctrl key is pressed
+  if (!e.ctrlKey && !e.metaKey) return;
+  
+  // Find the closest card element - expanded search
+  const cardElement = e.target.closest('.card, .hand-slot, .game-upgrade-card, .upgrade-card-item, .deck-card-stack, .card-on-board');
+  if (!cardElement) {
+    console.log('No card element found for ctrl+click');
+    return;
+  }
+  
+  console.log('Card enlargement triggered for element:', cardElement.className, cardElement.dataset);
+  
+  // IMPORTANT: Stop the event from bubbling to other listeners
+  e.preventDefault();
+  e.stopPropagation();
+  e.stopImmediatePropagation();
+  
+  // Determine the card data source based on the element type and location
+  const cardData = extractCardDataFromElement(cardElement);
+  if (cardData) {
+    console.log('Card data extracted:', cardData);
+    showEnlargedCard(cardData);
+  } else {
+    console.log('No card data found for element:', cardElement);
+  }
+}
+
+// Extract card data from different types of card elements
+function extractCardDataFromElement(element) {
+  console.log('Extracting card data from element:', element.className, element.dataset);
+  
+  // Try to get entity ID first
+  const entityId = element.dataset.entityid;
+  
+  // Hand cards - check if we have latestGameState
+  if (element.classList.contains('hand-slot') && entityId && latestGameState?.players?.[currentPlayer]?.hand) {
+    const handCard = findCardInContainer(latestGameState.players[currentPlayer].hand, entityId);
+    if (handCard) {
+      return {
+        ...handCard,
+        location: 'Hand',
+        containerType: 'hand'
+      };
+    }
+  }
+  
+  // Board cards - improved detection
+  if ((element.classList.contains('card-on-board') || element.classList.contains('card')) && entityId && latestGameState?.players) {
+    const boardCard = findCardInAllBoards(entityId);
+    if (boardCard) {
+      return {
+        ...boardCard,
+        location: `Board - ${boardCard.planet}`,
+        containerType: 'board'
+      };
+    }
+  }
+  
+  // Upgrade deck cards - check if we have upgrade deck data
+  if (element.classList.contains('game-upgrade-card') && entityId && latestGameState?.players?.[currentPlayer]?.upgradedeck) {
+    const upgradeCard = findCardInContainer(latestGameState.players[currentPlayer].upgradedeck, entityId);
+    if (upgradeCard) {
+      return {
+        ...upgradeCard,
+        location: 'Upgrade Deck',
+        containerType: 'upgrade'
+      };
+    }
+  }
+  
+  // Faction selection upgrade cards (during faction selection) - improved detection
+  if (element.classList.contains('upgrade-card-item')) {
+    const cardName = element.getAttribute('data-card-name') || element.dataset.cardName;
+    const cardImage = element.querySelector('.upgrade-card-image')?.src;
+    const categoryElement = element.closest('.upgrade-category');
+    const category = categoryElement?.dataset?.category || categoryElement?.className?.split(' ').find(c => c !== 'upgrade-category') || 'unknown';
+    
+    if (cardName) {
+      // Try to get more data from commanderUpgradeDecks if available
+      let additionalData = {};
+      if (typeof commanderUpgradeDecks !== 'undefined' && commanderUpgradeDecks) {
+        for (const deckData of Object.values(commanderUpgradeDecks)) {
+          if (deckData.upgrade_deck) {
+            const matchingCard = deckData.upgrade_deck.find(card => 
+              card.name === cardName || card.cardtype === cardName
+            );
+            if (matchingCard) {
+              additionalData = { ...matchingCard };
+              break;
+            }
+          }
+        }
+      }
+      
+      return {
+        cardtype: cardName,
+        image: cardImage || '',
+        location: 'Faction Preview - Upgrade Cards',
+        containerType: 'preview',
+        category: category,
+        ...additionalData
+      };
+    }
+  }
+  
+  // Deck preview cards (during faction selection)
+  if (element.classList.contains('deck-card-stack')) {
+    const cardName = element.getAttribute('data-card-name') || element.dataset.cardName;
+    const cardImage = element.querySelector('.deck-card-image')?.src;
+    
+    if (cardName) {
+      // Try to get more data from deckContents if available
+      let additionalData = {};
+      if (typeof deckContents !== 'undefined' && deckContents) {
+        for (const deckData of Object.values(deckContents)) {
+          if (deckData.organized_cards && deckData.organized_cards[cardName]) {
+            additionalData = { ...deckData.organized_cards[cardName].card };
+            break;
+          }
+        }
+      }
+      
+      return {
+        cardtype: cardName,
+        image: cardImage || '',
+        location: 'Deck Preview',
+        containerType: 'deck_preview',
+        ...additionalData
+      };
+    }
+  }
+  
+  // Fallback: try to extract basic info from any card-like element
+  const fallbackCardName = element.getAttribute('data-card-name') || 
+                           element.dataset.cardName || 
+                           element.querySelector('img')?.alt ||
+                           element.textContent?.trim();
+  
+  const fallbackImage = element.querySelector('img')?.src || 
+                       element.style.backgroundImage?.match(/url\(['"]?([^'"]+)['"]?\)/)?.[1];
+  
+  if (fallbackCardName && fallbackCardName !== 'Card' && fallbackCardName !== 'Empty') {
+    console.log('Using fallback card data for:', fallbackCardName);
+    return {
+      cardtype: fallbackCardName,
+      image: fallbackImage || '',
+      location: 'Unknown Location',
+      containerType: 'unknown'
+    };
+  }
+  
+  console.log('No card data could be extracted from element');
+  return null;
+}
+
+// Helper function to find a card in a container by entity ID
+function findCardInContainer(container, entityId) {
+  if (!container || !Array.isArray(container)) return null;
+  return container.find(card => card.entityid === entityId);
+}
+
+// Helper function to find a card on any player's board
+function findCardInAllBoards(entityId) {
+  if (!latestGameState || !latestGameState.players) return null;
+  
+  for (const player of Object.values(latestGameState.players)) {
+    if (player.cardsonboard) {
+      const card = player.cardsonboard.find(c => c.entityid === entityId);
+      if (card) return card;
+    }
+  }
+  return null;
+}
+
+// Show the enlarged card modal
+function showEnlargedCard(cardData) {
+  if (!cardEnlargementModal || !cardData) return;
+  
+  enlargedCardData = cardData;
+  
+  // Populate the modal with card data
+  populateEnlargedCardModal(cardData);
+  
+  // Show the modal
+  cardEnlargementModal.classList.remove('hidden');
+  
+  // Prevent background scrolling
+  document.body.style.overflow = 'hidden';
+}
+
+// Populate the modal with card information
+function populateEnlargedCardModal(cardData) {
+  const modal = cardEnlargementModal;
+  
+  // Card image
+  const imageEl = modal.querySelector('.enlarged-card-image');
+  imageEl.src = cardData.image || '';
+  imageEl.alt = cardData.cardtype || 'Card';
+  
+  // Card name and location
+  const nameEl = modal.querySelector('.enlarged-card-name');
+  const locationEl = modal.querySelector('.enlarged-card-location');
+  nameEl.textContent = formatCardName(cardData.cardtype || 'Unknown Card');
+  locationEl.textContent = cardData.location || '';
+  
+  // Card stats (if available)
+  populateEnlargedCardStats(cardData);
+  
+  // Keywords (if available)
+  populateEnlargedCardKeywords(cardData);
+  
+  // Effects (if available)
+  populateEnlargedCardEffects(cardData);
+  
+  // Cost (if available)
+  populateEnlargedCardCost(cardData);
+  
+  // Tokens (if available)
+  populateEnlargedCardTokens(cardData);
+  
+  // Overlay information (position, owner, etc.)
+  populateEnlargedCardOverlay(cardData);
+}
+
+// Populate card stats section
+function populateEnlargedCardStats(cardData) {
+  const statsEl = cardEnlargementModal.querySelector('.enlarged-card-stats');
+  
+  if (hasCardStats(cardData)) {
+    const stats = [];
+    
+    if (cardData.movement !== undefined) stats.push(`Movement: ${cardData.movement}`);
+    if (cardData.melee !== undefined) stats.push(`Melee: ${cardData.melee}`);
+    if (cardData.ranged !== undefined) stats.push(`Ranged: ${cardData.ranged}`);
+    if (cardData.blast !== undefined) stats.push(`Blast: ${cardData.blast}`);
+    if (cardData.armor !== undefined) stats.push(`Armor: ${cardData.armor}`);
+    if (cardData.health !== undefined) stats.push(`Health: ${cardData.health}`);
+    if (cardData.courage !== undefined) stats.push(`Courage: ${cardData.courage}`);
+    
+    if (stats.length > 0) {
+      statsEl.innerHTML = `
+        <div class="enlarged-card-section-title">Stats</div>
+        <div class="enlarged-card-stats-grid">
+          ${stats.map(stat => `<div class="enlarged-card-stat">${stat}</div>`).join('')}
+        </div>
+      `;
+      statsEl.style.display = 'block';
+    } else {
+      statsEl.style.display = 'none';
+    }
+  } else {
+    statsEl.style.display = 'none';
+  }
+}
+
+// Populate keywords section
+function populateEnlargedCardKeywords(cardData) {
+  const keywordsEl = cardEnlargementModal.querySelector('.enlarged-card-keywords');
+  
+  if (cardData.keywords && cardData.keywords.length > 0) {
+    keywordsEl.innerHTML = `
+      <div class="enlarged-card-section-title">Keywords</div>
+      <div class="enlarged-card-keywords-list">
+        ${cardData.keywords.map(keyword => `<span class="enlarged-card-keyword">${keyword}</span>`).join('')}
+      </div>
+    `;
+    keywordsEl.style.display = 'block';
+  } else {
+    keywordsEl.style.display = 'none';
+  }
+}
+
+// Populate effects section
+function populateEnlargedCardEffects(cardData) {
+  const effectsEl = cardEnlargementModal.querySelector('.enlarged-card-effects');
+  
+  if (cardData.effects && cardData.effects.length > 0) {
+    const effectsHtml = cardData.effects.map(effect => `
+      <div class="enlarged-card-effect">
+        <div class="enlarged-card-effect-name">${effect.name}</div>
+        <div class="enlarged-card-effect-description">${getEffectDescription(effect)}</div>
+        ${effect.consumption ? `<div class="enlarged-card-effect-consumption">${formatConsumption(effect.consumption)}</div>` : ''}
+      </div>
+    `).join('');
+    
+    effectsEl.innerHTML = `
+      <div class="enlarged-card-section-title">Effects</div>
+      <div class="enlarged-card-effects-list">
+        ${effectsHtml}
+      </div>
+    `;
+    effectsEl.style.display = 'block';
+  } else {
+    effectsEl.style.display = 'none';
+  }
+}
+
+// Populate cost section
+function populateEnlargedCardCost(cardData) {
+  const costEl = cardEnlargementModal.querySelector('.enlarged-card-cost');
+  
+  const costs = [];
+  if (cardData.costbiomass > 0) costs.push(`Biomass: ${cardData.costbiomass}`);
+  if (cardData.costplasteel > 0) costs.push(`Plasteel: ${cardData.costplasteel}`);
+  if (cardData.costpromethium > 0) costs.push(`Promethium: ${cardData.costpromethium}`);
+  
+  if (costs.length > 0) {
+    costEl.innerHTML = `
+      <div class="enlarged-card-section-title">Cost</div>
+      <div class="enlarged-card-cost-list">
+        ${costs.map(cost => `<div class="enlarged-card-cost-item">${cost}</div>`).join('')}
+      </div>
+    `;
+    costEl.style.display = 'block';
+  } else {
+    costEl.style.display = 'none';
+  }
+}
+
+// Populate tokens section
+function populateEnlargedCardTokens(cardData) {
+  const tokensEl = cardEnlargementModal.querySelector('.enlarged-card-tokens');
+  
+  if (cardData.tokens && cardData.tokens.length > 0) {
+    const tokensList = [];
+    cardData.tokens.forEach(tokenDict => {
+      Object.entries(tokenDict).forEach(([tokenName, tokenCount]) => {
+        if (tokenCount > 0) {
+          tokensList.push(`${formatTokenName(tokenName)}: ${tokenCount}`);
+        }
+      });
+    });
+    
+    if (tokensList.length > 0) {
+      tokensEl.innerHTML = `
+        <div class="enlarged-card-section-title">Status Effects</div>
+        <div class="enlarged-card-tokens-list">
+          ${tokensList.map(token => `<div class="enlarged-card-token">${token}</div>`).join('')}
+        </div>
+      `;
+      tokensEl.style.display = 'block';
+    } else {
+      tokensEl.style.display = 'none';
+    }
+  } else {
+    tokensEl.style.display = 'none';
+  }
+}
+
+// Populate overlay information
+function populateEnlargedCardOverlay(cardData) {
+  const overlayEl = cardEnlargementModal.querySelector('.enlarged-card-overlay-info');
+  
+  const overlayInfo = [];
+  
+  if (cardData.owner) {
+    overlayInfo.push(`<div class="enlarged-card-owner">Owner: ${cardData.owner}</div>`);
+  }
+  
+  if (cardData.position) {
+    overlayInfo.push(`<div class="enlarged-card-position">Position: (${cardData.position.x}, ${cardData.position.y})</div>`);
+  }
+  
+  if (cardData.planet) {
+    overlayInfo.push(`<div class="enlarged-card-planet">Planet: ${cardData.planet}</div>`);
+  }
+  
+  if (cardData.moved_this_turn) {
+    overlayInfo.push(`<div class="enlarged-card-status moved">Moved this turn</div>`);
+  }
+  
+  if (cardData.has_attacked_this_stage) {
+    overlayInfo.push(`<div class="enlarged-card-status attacked">Attacked this stage</div>`);
+  }
+  
+  if (cardData.sick_this_turn) {
+    overlayInfo.push(`<div class="enlarged-card-status sick">Sick this turn</div>`);
+  }
+  
+  overlayEl.innerHTML = overlayInfo.join('');
+}
+
+// Close the enlarged card modal
+function closeCardEnlargement() {
+  if (!cardEnlargementModal) return;
+  
+  cardEnlargementModal.classList.add('hidden');
+  enlargedCardData = null;
+  
+  // Restore background scrolling
+  document.body.style.overflow = '';
+}
+
+// Helper functions
+function hasCardStats(cardData) {
+  return cardData.movement !== undefined || 
+         cardData.melee !== undefined || 
+         cardData.ranged !== undefined || 
+         cardData.blast !== undefined || 
+         cardData.armor !== undefined || 
+         cardData.health !== undefined || 
+         cardData.courage !== undefined;
+}
+
+function formatConsumption(consumption) {
+  switch (consumption) {
+    case 'once_per_turn_per_initiating_entity':
+      return 'Once per turn';
+    case 'once_per_battle':
+      return 'Once per battle';
+    case 'once_per_battle_per_initiating_entity':
+      return 'Once per battle per unit';
+    case 'single_use':
+      return 'Single use';
+    default:
+      return consumption;
+  }
+}
+
+function formatTokenName(tokenName) {
+  return tokenName.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+}
+
+// Add direct ctrl+click listener to board cards (call this when rendering board cards)
+function addCardEnlargementListener(cardElement) {
+  if (!cardElement) return;
+  
+  // Remove existing enlargement listener to avoid duplicates
+  cardElement.removeEventListener('click', handleDirectCardEnlargementClick);
+  
+  // Add direct listener with high priority
+  cardElement.addEventListener('click', handleDirectCardEnlargementClick, true);
+  
+  // Mark that we've added the listener
+  cardElement.setAttribute('data-enlargement-listener', 'true');
+}
+
+// Direct click handler for individual card elements
+function handleDirectCardEnlargementClick(e) {
+  // Only handle ctrl+click
+  if (!e.ctrlKey && !e.metaKey) return;
+  
+  console.log('Direct card enlargement click detected on:', e.currentTarget.className);
+  
+  // Stop event propagation immediately
+  e.preventDefault();
+  e.stopPropagation();
+  e.stopImmediatePropagation();
+  
+  const cardData = extractCardDataFromElement(e.currentTarget);
+  if (cardData) {
+    console.log('Direct card data extracted:', cardData);
+    showEnlargedCard(cardData);
+  } else {
+    console.log('Direct: No card data found');
+  }
+}
+document.addEventListener('DOMContentLoaded', () => {
+  initializeCardEnlargement();
+});
+
+// Also initialize when switching to game screen (in case DOM wasn't ready)
+function reinitializeCardEnlargement() {
+  if (!cardEnlargementModal) {
+    initializeCardEnlargement();
+  }
+  console.log('Card enlargement reinitialized');
+}
