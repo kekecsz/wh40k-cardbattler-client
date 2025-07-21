@@ -71,7 +71,7 @@ const player1Graveyard = document.getElementById("player1-graveyard");
 const player2Graveyard = document.getElementById("player2-graveyard"); // Keep for compatibility
 const statusDisplay = document.getElementById("status-display");
 const advanceButton = document.getElementById("advance-button");
-const API_BASE = "https://card-battler-server-386329199229.europe-central2.run.app"; // Change to your Cloud Run URL later
+const API_BASE = "http://127.0.0.1:8000"; // Change to your Cloud Run URL later
 
 document.getElementById("startGame").addEventListener("click", () => {
   isJoiningPlayer = false; // Reset this flag
@@ -1904,6 +1904,7 @@ async function loadTokenLibrary() {
 
 // Modified version of renderBoard that only shows entities on the specified planet
 function renderBoardForPlanet(players, planetName) {
+  console.log("About to re-render board - animations will be cleared");
   // First, clear all tiles but preserve feature icons
   document.querySelectorAll("#game-board .tile").forEach(tile => {
     // Remove cards but keep feature icons
@@ -5402,19 +5403,6 @@ function updateGameStateAndRender(newState) {
     renderHand(newState.players[currentPlayer].hand, currentPlayer);
   }
   
-  if (boardChanged) {
-    if (featuresChanged && currentDisplayedPlanet) {
-      // If features changed, recreate the entire board for the current planet
-      updateGameBoardForPlanet(currentDisplayedPlanet);
-    } else {
-      // Normal board update
-      renderBoardForPlanet(newState.players, currentDisplayedPlanet);
-    }
-    
-    // After rendering the board, check for health changes and apply damage animations
-    animateDamagedCards(oldBoardState, newState.players);
-  }
-  
   // Update graveyards if changed
   if (graveyardChanged) {
     ["player1", "player2"].forEach(player => {
@@ -5450,6 +5438,7 @@ function updateGameStateAndRender(newState) {
     }
   }
   
+
   // Initialize planet navigation if needed (but only if players didn't change - we handled that above)
   if (newState && currentPlayer && !planetNavigationInitialized) {
     initializePlanetNavigation();
@@ -5461,9 +5450,27 @@ function updateGameStateAndRender(newState) {
     updatePlanetPreviewTiles();
   }
 
+
+
   setTimeout(() => {
     setupGlobalCardEnlargementListeners();
   }, 100);
+
+  if (boardChanged) {
+    if (featuresChanged && currentDisplayedPlanet) {
+      // If features changed, recreate the entire board for the current planet
+      updateGameBoardForPlanet(currentDisplayedPlanet);
+    } else {
+      // CRITICAL FIX: Apply damage animations BEFORE re-rendering the board
+      animateDamagedCards(oldBoardState, newState.players);
+      
+      // Then delay the board re-render to allow animations to play
+      setTimeout(() => {
+        renderBoardForPlanet(newState.players, currentDisplayedPlanet);
+      }, 1500); // 1.5 second delay to let animations complete
+    }
+  }
+
 }
 
 // Helper functions to determine what's changed in the game state
@@ -6040,12 +6047,18 @@ function didUpgradeDeckChange(oldState, newState) {
   return !oldIds.every((id, index) => id === newIds[index]);
 }
 
-// Function to check which cards have taken damage and apply animations
+// Enhanced damage animation function with better debugging and reliability
 function animateDamagedCards(oldBoardState, newPlayers) {
+  console.log("=== DAMAGE ANIMATION DEBUG START ===");
+  console.log("Old board state:", oldBoardState);
+  console.log("New players:", newPlayers);
+  
   // Process each player's cards
   for (const player of ['player1', 'player2']) {
-    const oldCards = oldBoardState[player];
+    const oldCards = oldBoardState[player] || [];
     const newCards = newPlayers[player]?.cardsonboard || [];
+    
+    console.log(`Processing ${player}:`, { oldCount: oldCards.length, newCount: newCards.length });
     
     // Check each card in the new state to see if its health decreased
     newCards.forEach(newCard => {
@@ -6053,41 +6066,46 @@ function animateDamagedCards(oldBoardState, newPlayers) {
       
       // If the card existed before and has less health now
       if (oldCard && newCard.health < oldCard.health) {
-        // Find the card element on the board
-        const cardElement = document.querySelector(`[data-entityid="${newCard.entityid}"]`);
-        if (cardElement) {
-          // Create a damage overlay if it doesn't exist
-          let damageOverlay = cardElement.querySelector('.damage-overlay');
-          if (!damageOverlay) {
-            damageOverlay = document.createElement('div');
-            damageOverlay.className = 'damage-overlay';
-            cardElement.appendChild(damageOverlay);
+        const damageAmount = oldCard.health - newCard.health;
+        console.log(`Card ${newCard.cardtype} (${newCard.entityid}) took ${damageAmount} damage`);
+        
+        // Try multiple selectors to find the card element
+        const selectors = [
+          `[data-entityid="${newCard.entityid}"]`,
+          `.card[data-entityid="${newCard.entityid}"]`,
+          `.card-on-board[data-entityid="${newCard.entityid}"]`,
+          `#game-board [data-entityid="${newCard.entityid}"]`
+        ];
+        
+        let cardElement = null;
+        for (const selector of selectors) {
+          cardElement = document.querySelector(selector);
+          if (cardElement) {
+            console.log(`Found card element with selector: ${selector}`);
+            break;
           }
+        }
+        
+        if (!cardElement) {
+          console.warn(`Could not find card element for ${newCard.entityid}. Trying broader search...`);
           
-          // Remove any existing animation classes
-          cardElement.classList.remove('damage-animation');
-          
-          // Force a reflow to ensure the animation plays again
-          void cardElement.offsetWidth;
-          
-          // Add the animation class
-          cardElement.classList.add('damage-animation');
-          
-          // Calculate damage amount
-          const damageAmount = oldCard.health - newCard.health;
-          
-          // Create and display a damage number
-          const damageNumber = document.createElement('div');
-          damageNumber.className = 'damage-number';
-          damageNumber.textContent = `-${damageAmount}`;
-          cardElement.appendChild(damageNumber);
-          
-          // Remove the number after animation completes
-          setTimeout(() => {
-            if (damageNumber.parentNode) {
-              damageNumber.parentNode.removeChild(damageNumber);
+          // Fallback: search all cards and match by entityid
+          const allCards = document.querySelectorAll('.card, .card-on-board');
+          for (const card of allCards) {
+            if (card.dataset.entityid === newCard.entityid) {
+              cardElement = card;
+              console.log("Found card via fallback search");
+              break;
             }
-          }, 1000);
+          }
+        }
+        
+        if (cardElement) {
+          console.log(`Animating damage on card element:`, cardElement);
+          animateCardDamage(cardElement, damageAmount);
+        } else {
+          console.error(`Failed to find card element for entityid: ${newCard.entityid}`);
+          console.log("Available cards on board:", document.querySelectorAll('[data-entityid]'));
         }
       }
     });
@@ -6097,45 +6115,134 @@ function animateDamagedCards(oldBoardState, newPlayers) {
       const stillExists = newCards.some(card => card.entityid === oldCard.entityid);
       
       if (!stillExists) {
-        // Find the last known position
-        const { x, y } = oldCard.position;
-        const tile = document.querySelector(`#game-board .tile[data-x='${x}'][data-y='${y}']`);
-        
-        if (tile) {
-          // Create a clone of the card for the death animation
-          const cardClone = document.createElement('div');
-          cardClone.className = 'card card-on-board death-animation';
-          
-          // Clone the card image and info
-          const img = document.createElement('img');
-          img.src = oldCard.image;
-          img.alt = oldCard.cardtype;
-          
-          const info = document.createElement('div');
-          info.className = 'card-info';
-          info.textContent = `🏃${oldCard.movement} ⚔️${oldCard.melee} 🏹${oldCard.ranged} 💥${oldCard.blast} 🛡️${oldCard.armor} ❤️${oldCard.health} 🧠${oldCard.courage}`;
-          
-          cardClone.appendChild(img);
-          cardClone.appendChild(info);
-          
-          // Position the clone in the same place
-          cardClone.style.position = 'absolute';
-          cardClone.style.top = '0';
-          cardClone.style.left = '0';
-          cardClone.style.width = '100%';
-          cardClone.style.height = '100%';
-          
-          tile.appendChild(cardClone);
-          
-          // Remove the clone after the animation completes
-          setTimeout(() => {
-            if (cardClone.parentNode) {
-              cardClone.parentNode.removeChild(cardClone);
-            }
-          }, 2000); // Match the 2s animation duration
-        }
+        console.log(`Card ${oldCard.cardtype} (${oldCard.entityid}) was destroyed`);
+        animateCardDeath(oldCard);
       }
     });
+  }
+  
+  console.log("=== DAMAGE ANIMATION DEBUG END ===");
+}
+
+// Separate function for damage animation with improved reliability
+function animateCardDamage(cardElement, damageAmount) {
+  if (!cardElement) {
+    console.error("Cannot animate damage: cardElement is null");
+    return;
+  }
+  
+  console.log(`Starting damage animation on:`, cardElement, `for ${damageAmount} damage`);
+  
+  // Remove any existing damage classes to ensure fresh animation
+  cardElement.classList.remove('damage-animation', 'taking-damage');
+  
+  // Remove any existing damage numbers
+  const existingNumbers = cardElement.querySelectorAll('.damage-number');
+  existingNumbers.forEach(num => num.remove());
+  
+  // Force reflow to ensure classes are removed
+  cardElement.offsetHeight;
+  
+  // Create and add damage overlay if it doesn't exist
+  let damageOverlay = cardElement.querySelector('.damage-overlay');
+  if (!damageOverlay) {
+    damageOverlay = document.createElement('div');
+    damageOverlay.className = 'damage-overlay';
+    cardElement.appendChild(damageOverlay);
+  }
+  
+  // Add animation class
+  cardElement.classList.add('damage-animation', 'taking-damage');
+  
+  // Create damage number element
+  const damageNumber = document.createElement('div');
+  damageNumber.className = 'damage-number';
+  damageNumber.textContent = `-${damageAmount}`;
+  cardElement.appendChild(damageNumber);
+  
+  console.log(`Added damage number:`, damageNumber, `to card:`, cardElement);
+  
+  // Clean up after animation
+  const cleanupTimeout = setTimeout(() => {
+    if (cardElement.parentNode) {
+      cardElement.classList.remove('damage-animation', 'taking-damage');
+      
+      const numberToRemove = cardElement.querySelector('.damage-number');
+      if (numberToRemove) {
+        numberToRemove.remove();
+      }
+    }
+  }, 1500); // Increased cleanup time
+  
+  // Store cleanup timeout on element for potential early cleanup
+  cardElement.damageCleanupTimeout = cleanupTimeout;
+}
+
+// Separate function for death animation
+function animateCardDeath(deadCard) {
+  console.log(`Starting death animation for:`, deadCard);
+  
+  // Find the tile where the card was
+  const { x, y } = deadCard.position;
+  const planetName = deadCard.planet;
+  
+  const tile = document.querySelector(
+    `#game-board .tile[data-x='${x}'][data-y='${y}'][data-planet='${planetName}']`
+  );
+  
+  if (!tile) {
+    console.warn(`Could not find tile for death animation at ${x}, ${y} on ${planetName}`);
+    return;
+  }
+  
+  // Create a clone of the card for the death animation
+  const cardClone = document.createElement('div');
+  cardClone.className = 'card card-on-board death-animation';
+  
+  // Clone the card image and info
+  const img = document.createElement('img');
+  img.src = deadCard.image;
+  img.alt = deadCard.cardtype;
+  img.onerror = function() {
+    this.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEyMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEyMCIgZmlsbD0iIzU4NWI3MCIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmaWxsPSJ3aGl0ZSIgZm9udC1zaXplPSIxMiIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPkRFQUQ8L3RleHQ+PC9zdmc+';
+  };
+  
+  const info = document.createElement('div');
+  info.classList.add('card-info');
+  info.textContent = `💀 ${deadCard.cardtype} 💀`;
+  
+  cardClone.appendChild(img);
+  cardClone.appendChild(info);
+  
+  // Position the clone in the same place as the original card
+  cardClone.style.position = 'absolute';
+  cardClone.style.top = '0';
+  cardClone.style.left = '0';
+  cardClone.style.width = '100%';
+  cardClone.style.height = '100%';
+  cardClone.style.zIndex = '1000';
+  
+  tile.appendChild(cardClone);
+  
+  console.log(`Added death animation clone to tile:`, tile);
+  
+  // Remove the clone after the animation completes
+  setTimeout(() => {
+    if (cardClone.parentNode) {
+      cardClone.parentNode.removeChild(cardClone);
+      console.log("Removed death animation clone");
+    }
+  }, 2500); // Slightly longer than animation duration
+}
+
+// Helper function to test animations manually (for debugging)
+function testDamageAnimation() {
+  const cards = document.querySelectorAll('.card-on-board');
+  if (cards.length > 0) {
+    console.log("Testing damage animation on first card");
+    animateCardDamage(cards[0], 5);
+  } else {
+    console.log("No cards found to test animation");
   }
 }
 
@@ -6649,6 +6756,7 @@ async function handleAdvanceButtonClick() {
     } catch (error) {
       console.error("Network error advancing stage:", error);
     }
+    
   }
 }
 
