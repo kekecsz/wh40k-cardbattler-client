@@ -71,7 +71,7 @@ const player1Graveyard = document.getElementById("player1-graveyard");
 const player2Graveyard = document.getElementById("player2-graveyard"); // Keep for compatibility
 const statusDisplay = document.getElementById("status-display");
 const advanceButton = document.getElementById("advance-button");
-const API_BASE = "https://card-battler-server-386329199229.europe-central2.run.app"; // Change to your Cloud Run URL later
+const API_BASE = "http://127.0.0.1:8000"; // Change to your Cloud Run URL later, which is usually https://card-battler-server-386329199229.europe-central2.run.app
 
 document.getElementById("startGame").addEventListener("click", () => {
   isJoiningPlayer = false; // Reset this flag
@@ -7111,7 +7111,7 @@ function designateAttack(attackerId, targetId, attackType) {
     return;
   }
 
-  // Verify both entities are on the same planet
+  // Verify both entities are on the same planet (client-side validation)
   if (attacker.planet !== target.planet) {
     console.error("Cannot attack across planets");
     alert("Cannot attack targets on different planets!");
@@ -7121,10 +7121,8 @@ function designateAttack(attackerId, targetId, attackType) {
   const payload = {
     sessionid: currentSessionId,
     player: currentPlayer,
-    attacker_col: attacker.position.x,
-    attacker_row: attacker.position.y,
-    target_col: target.position.x,
-    target_row: target.position.y,
+    attacker_entityid: attackerId,
+    target_entityid: targetId,
     attack_type: attackType
   };
 
