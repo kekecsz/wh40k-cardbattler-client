@@ -71,7 +71,7 @@ const player1Graveyard = document.getElementById("player1-graveyard");
 const player2Graveyard = document.getElementById("player2-graveyard"); // Keep for compatibility
 const statusDisplay = document.getElementById("status-display");
 const advanceButton = document.getElementById("advance-button");
-const API_BASE = "https://card-battler-server-386329199229.europe-central2.run.app"; // Change to your Cloud Run URL later, which is usually https://card-battler-server-386329199229.europe-central2.run.app
+const API_BASE = "http://127.0.0.1:8000"; // Change to your Cloud Run URL later, which is usually https://card-battler-server-386329199229.europe-central2.run.app
 
 document.getElementById("startGame").addEventListener("click", () => {
   isJoiningPlayer = false; // Reset this flag
@@ -1902,7 +1902,7 @@ async function loadTokenLibrary() {
   }
 }
 
-// Modified version of renderBoard that only shows entities on the specified planet
+// Enhanced renderBoardForPlanet function with improved action highlighting
 function renderBoardForPlanet(players, planetName) {
   console.log("About to re-render board - animations will be cleared");
   // First, clear all tiles but preserve feature icons
@@ -2013,12 +2013,26 @@ function renderBoardForPlanet(players, planetName) {
         if (card.owner === currentPlayer) {
           cardElement.style.cursor = "pointer";
 
+          // NEW: Enhanced action highlighting for board cards
+          let canTakeAction = false;
+          
+          // Check movement eligibility
           if (latestGameState.stage === "movement" && !card.moved_this_turn) {
-            cardElement.classList.add("selectabletomove");
+            canTakeAction = true;
           }
-
+          
+          // Check attack eligibility
           if (latestGameState.stage === "prebattle" && !card.has_attacked_this_stage) {
-            cardElement.classList.add("selectabletoattack");
+            canTakeAction = true;
+          }
+          
+          // Check if card has eligible effects
+          if (hasEligibleEffects(card)) {
+            canTakeAction = true;
+          }
+          
+          if (canTakeAction) {
+            cardElement.classList.add("cantakeaction");
           }
 
           cardElement.addEventListener("click", async (e) => {
@@ -2682,6 +2696,11 @@ function createGameUpgradeCardElement(entity) {
     cardElement.title = formatCardName(entity.cardtype);
   }
   
+  // Add action highlighting for upgrade cards
+  if (hasEligibleEffects(entity)) {
+    cardElement.classList.add("cantakeaction");
+  }
+  
   // Enhanced click handler for effects
   cardElement.addEventListener('click', async () => {
     await handleUpgradeCardClick(entity);
@@ -2758,6 +2777,7 @@ function checkEffectsEligibility(effects, entity) {
   return eligible;
 }
 
+// Enhanced isEffectEligible function to include affordability check
 function isEffectEligible(effect) {
   if (!latestGameState) return false;
   
@@ -2781,7 +2801,26 @@ function isEffectEligible(effect) {
     return false;
   }
   
+  // NEW: Check affordability
+  if (!canPlayerAffordEffect(effect)) {
+    return false;
+  }
+  
   return true;
+}
+
+
+// Function to check if player can afford a card placement
+function canPlayerAffordCard(card, player) {
+  if (!card || !player) return false;
+  
+  const biomassNeeded = card.costbiomass || 0;
+  const plasteelNeeded = card.costplasteel || 0;
+  const promethiumNeeded = card.costpromethium || 0;
+  
+  return player.biomass >= biomassNeeded && 
+         player.plasteel >= plasteelNeeded && 
+         player.promethium >= promethiumNeeded;
 }
 
 async function initiateEffectTargeting(initiatorEntity, effect) {
@@ -4508,6 +4547,14 @@ function isEffectEligibleWithConsumption(effect, entity) {
   return true;
 }
 
+// Function to check if any card has eligible effects
+function hasEligibleEffects(card) {
+  if (!card.effects || card.effects.length === 0) return false;
+  
+  return card.effects.some(effect => {
+    return isEffectEligibleWithConsumption(effect, card);
+  });
+}
 
 function highlightEligibleTargetsForKeywordChange(effect) {
   // Clear previous highlights
@@ -6309,7 +6356,7 @@ function highlightSelectedCard(entityid) {
     if (el.dataset.entityid === entityid) {
       el.classList.add("selected");
       if (latestGameState && latestGameState.stage === "movement") {
-        el.classList.remove("selectabletomove");
+        el.classList.remove("cantakeaction");
       }
     } else {
       el.classList.remove("selected");
@@ -6318,9 +6365,9 @@ function highlightSelectedCard(entityid) {
         if (el.dataset.owner === currentPlayer) {
           const cardData = findCardById(latestGameState.players[currentPlayer].cardsonboard, el.dataset.entityid);
           if (cardData && !cardData.moved_this_turn) {
-            el.classList.add("selectabletomove");
+            el.classList.add("cantakeaction");
           } else {
-            el.classList.remove("selectabletomove");
+            el.classList.remove("cantakeaction");
           }
         }
       }
@@ -6357,6 +6404,7 @@ function highlightEligibleTiles() {
   });
 }
 
+// Enhanced renderHand function with action highlighting
 function renderHand(hand, player) {
   // Only render hand for current player
   if (player !== currentPlayer) return;
@@ -6374,9 +6422,6 @@ function renderHand(hand, player) {
     
     if (index < hand.length) {
       const card = hand[index];
-      
-      // DEBUG: Log card info and keywords
-      console.log(`Rendering hand card: ${card.cardtype}, keywords:`, card.keywords, `container: ${card.container}`);
       
       // Create card image
       const cardImage = document.createElement("img");
@@ -6397,13 +6442,10 @@ function renderHand(hand, player) {
       info.textContent = `🏃${card.movement} ⚔️${card.melee} 🏹${card.ranged} 💥${card.blast} 🛡️${card.armor} ❤️${card.health} 🧠${card.courage}`;
       slot.appendChild(info);
       
-      // IMPORTANT: Add token icons if card has tokens OR keywords
+      // Add token icons if card has tokens OR keywords
       const tokenIcons = createTokenIcons(card);
       if (tokenIcons) {
-        console.log(`Adding token icons to ${card.cardtype}:`, tokenIcons);
         slot.appendChild(tokenIcons);
-      } else {
-        console.log(`No token icons for ${card.cardtype}`);
       }
 
       // Add cost display to cards in hand
@@ -6432,6 +6474,18 @@ function renderHand(hand, player) {
         costContainer.className = "hand-card-cost";
         costContainer.innerHTML = costs.join('');
         slot.appendChild(costContainer);
+      }
+      
+      // NEW: Add action highlighting for hand cards (only during player's turn)
+      const playerData = latestGameState.players[currentPlayer];
+      const isPlayerTurn = latestGameState.playerturn === currentPlayer;
+      
+      if (isPlayerTurn) {
+        // Check if card can be placed during cardplacement stage
+        if (latestGameState.stage === "cardplacement" && 
+            canPlayerAffordCard(card, playerData)) {
+          slot.classList.add("cantakeaction");
+        }
       }
       
       // Add click handler
