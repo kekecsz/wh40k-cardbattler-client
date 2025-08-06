@@ -71,7 +71,7 @@ const player1Graveyard = document.getElementById("player1-graveyard");
 const player2Graveyard = document.getElementById("player2-graveyard"); // Keep for compatibility
 const statusDisplay = document.getElementById("status-display");
 const advanceButton = document.getElementById("advance-button");
-const API_BASE = "http://127.0.0.1:8000"; // Change to your Cloud Run URL later, which is usually https://card-battler-server-386329199229.europe-central2.run.app
+const API_BASE = "https://card-battler-server-386329199229.europe-central2.run.app"; // Change to your Cloud Run URL later, which is usually https://card-battler-server-386329199229.europe-central2.run.app
 
 document.getElementById("startGame").addEventListener("click", () => {
   isJoiningPlayer = false; // Reset this flag
@@ -7943,4 +7943,5 @@ function reinitializeCardEnlargement() {
     initializeCardEnlargement();
   }
   console.log('Card enlargement reinitialized');
+
 }
